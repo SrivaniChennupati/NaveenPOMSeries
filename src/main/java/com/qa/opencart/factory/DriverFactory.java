@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Properties;
 
 import org.apache.commons.io.FileUtils;
@@ -11,13 +13,15 @@ import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.remote.RemoteWebDriver;
 
 import io.github.bonigarcia.wdm.WebDriverManager;
 
 public class DriverFactory {
 
-	
 	// if we dont use the thread local cocept , when we have large number of test
 	// cases , chances are very high that it gives false report/data mismatch
 	// incasse of extent report
@@ -48,12 +52,20 @@ public class DriverFactory {
 
 		if (browser.equalsIgnoreCase("chrome")) {
 
-			WebDriverManager.chromedriver().setup();
+			// if remote is true then execute on my remote machine -docker
+
+			if (Boolean.parseBoolean(prop.getProperty("remote"))) {
+
+				initRemoteDriver(browser);
+
+			}else { //local
+				
+				WebDriverManager.chromedriver().setup();
 
 			// driver = new ChromeDriver(optionsmanager.getChromeOptions());//normal driver
 
 			tldriver.set(new ChromeDriver(optionsmanager.getChromeOptions())); // thread local driver
-
+			}
 		} else if (browser.equalsIgnoreCase("firefox")) {
 
 			WebDriverManager.firefoxdriver().setup();
@@ -86,6 +98,31 @@ public class DriverFactory {
 
 		return getDriver();
 
+	}
+
+	private void initRemoteDriver(String browser) {
+
+		if (browser.equals("chrome")) {
+
+			DesiredCapabilities cap = DesiredCapabilities.chrome();
+			// we have to tell what the browser name is
+			cap.setCapability("browserName", "chrome");
+
+			// if i want to execute my test cases on headless mode on selenium grid
+
+			cap.setCapability(ChromeOptions.CAPABILITY, optionsmanager.getChromeOptions());
+
+			// new remote webdriver is having one constructor , we have to give the remote
+			// address in the form of URL
+
+			try {
+				tldriver.set(new RemoteWebDriver(new URL(prop.getProperty("huburl")), cap));
+			} catch (MalformedURLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+		}
 	}
 
 	// now we have to get the thread local driver
@@ -200,7 +237,5 @@ public class DriverFactory {
 		return path;
 
 	}
-
-	
 
 }
